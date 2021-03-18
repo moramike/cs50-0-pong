@@ -32,6 +32,9 @@ function Paddle:init(x, y, width, height)
     self.width = width
     self.height = height
     self.dy = 0
+    self.isAI = false
+    self.isEngaged = false
+    self.awarenessRange = VIRTUAL_WIDTH / 2
 end
 
 function Paddle:update(dt)
@@ -59,4 +62,13 @@ end
 ]]
 function Paddle:render()
     love.graphics.rectangle('fill', self.x, self.y, self.width, self.height)
+end
+
+-- Should enable or disable the use of AI for a certain paddle
+function Paddle:engageAI(option)
+    if option == true then
+        self.isAI = true
+    elseif option == false then
+        self.isAI = false
+    end
 end

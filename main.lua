@@ -17,6 +17,33 @@
     modern systems.
 ]]
 
+--[[
+    -- AI update --
+    CS50 assignment
+
+    Author: Mike Mora
+    mike@mikemora.me
+
+    This is a basic AI that allows the player to select between human or AI players:
+    - player1 vs AI
+    - AI vs player2
+    - player1 vs player2
+    - AI vs AI
+
+    The AI uses a random delay before they can move their pad,
+    so there's a chance for the AI to fail if they are far away from the collision point,
+    giving the player a random small chance to win.
+    The delay is calculated using the ball.dx & ball.x. If the ball heads to the corresponding AI (dx|-dx),
+    check if ball.x is after (if AI is player2) or before (if AI is player1) a random x value between .25 & .75 VIRTUAL_WIDTH
+    Once the ball crosses that line, the AI is allowed to move their pad.
+
+    Example:
+    The ball is heading to the right (+ball.dx) & a random x value is given to player2(AI): 50% VIRTUAL_WIDTH.
+    While the ball is before 50% VIRTUAL_WIDTH, player 2 does nothing. Once the ball is after 50% VIRTUAL_WIDTH
+    player2 starts moving their paddle in the desired y direction.
+
+]]
+
 -- push is a library that will allow us to draw our game at a virtual
 -- resolution, instead of however large our window is; used to provide
 -- a more retro aesthetic
@@ -144,6 +171,10 @@ function love.update(dt)
         else
             ball.dx = -math.random(140, 200)
         end
+        -- automatically serve next round if both players are AI controlled
+        if player1.isAI and player2.isAI then
+            gameState = 'play'
+        end
     elseif gameState == 'play' then
         -- detect ball collision with paddles, reversing dx if true and
         -- slightly increasing it, then altering the dy based on the position
@@ -151,6 +182,7 @@ function love.update(dt)
         if ball:collides(player1) then
             ball.dx = -ball.dx * 1.03
             ball.x = player1.x + 5
+            player1.isEngaged = false
 
             -- keep velocity going in the same direction, but randomize it
             if ball.dy < 0 then
@@ -164,6 +196,7 @@ function love.update(dt)
         if ball:collides(player2) then
             ball.dx = -ball.dx * 1.03
             ball.x = player2.x - 4
+            player2.isEngaged = false
 
             -- keep velocity going in the same direction, but randomize it
             if ball.dy < 0 then
@@ -230,24 +263,32 @@ function love.update(dt)
     end
 
     --
-    -- paddles can move no matter what state we're in
+    -- paddles can be moved by players only if they are not AI controled
     --
     -- player 1
-    if love.keyboard.isDown('w') then
-        player1.dy = -PADDLE_SPEED
-    elseif love.keyboard.isDown('s') then
-        player1.dy = PADDLE_SPEED
+    if gameState ~= 'start' and not player1.isAI then
+        if love.keyboard.isDown('w') then
+            player1.dy = -PADDLE_SPEED
+        elseif love.keyboard.isDown('s') then
+            player1.dy = PADDLE_SPEED
+        else
+            player1.dy = 0
+        end
     else
-        player1.dy = 0
+        controlledByAI(1)
     end
 
     -- player 2
-    if love.keyboard.isDown('up') then
-        player2.dy = -PADDLE_SPEED
-    elseif love.keyboard.isDown('down') then
-        player2.dy = PADDLE_SPEED
+    if gameState ~= 'start' and not player2.isAI then
+        if love.keyboard.isDown('up') then
+            player2.dy = -PADDLE_SPEED
+        elseif love.keyboard.isDown('down') then
+            player2.dy = PADDLE_SPEED
+        else
+            player2.dy = 0
+        end
     else
-        player2.dy = 0
+        controlledByAI(2)
     end
 
     -- update our ball based on its DX and DY only if we're in play state;
@@ -297,6 +338,17 @@ function love.keypressed(key)
             end
         end
     end
+
+    -- allow the selection of human or AI players on the start screen
+    if gameState == 'start' then
+        if key == 'w' or key == 's' then
+            -- toggle player1's control
+            player1.isAI = not player1.isAI
+        elseif key == 'up' or key == 'down' then
+            -- toggle player2's control
+            player2.isAI = not player2.isAI
+        end
+    end
 end
 
 --[[
@@ -315,6 +367,10 @@ function love.draw()
         love.graphics.setFont(smallFont)
         love.graphics.printf('Welcome to Pong!', 0, 10, VIRTUAL_WIDTH, 'center')
         love.graphics.printf('Press Enter to begin!', 0, 20, VIRTUAL_WIDTH, 'center')
+
+        -- AI selection menus
+        displayControlsMenu()
+
     elseif gameState == 'serve' then
         -- UI messages
         love.graphics.setFont(smallFont)
@@ -333,7 +389,9 @@ function love.draw()
     end
 
     -- show the score before ball is rendered so it can move over the text
-    displayScore()
+    if gameState ~= 'start' then
+        displayScore()
+    end
     
     player1:render()
     player2:render()
@@ -358,6 +416,37 @@ function displayScore()
         VIRTUAL_HEIGHT / 3)
 end
 
+-- Renders the selection menu for human or AI players
+function displayControlsMenu()
+    --player 1
+    love.graphics.setFont(largeFont)
+    love.graphics.printf('Player 1', 0, 60, VIRTUAL_WIDTH / 2, 'center')
+    love.graphics.setFont(smallFont)
+    love.graphics.printf('Human', 0, 90, VIRTUAL_WIDTH / 2, 'center')
+    love.graphics.printf('Computer', 0, 110, VIRTUAL_WIDTH / 2, 'center')
+    --player2
+    love.graphics.setFont(largeFont)
+    love.graphics.printf('Player 2', VIRTUAL_WIDTH / 2, 60, VIRTUAL_WIDTH / 2, 'center')
+    love.graphics.setFont(smallFont)
+    love.graphics.printf('Human', VIRTUAL_WIDTH / 2, 90, VIRTUAL_WIDTH / 2, 'center')
+    love.graphics.printf('Computer', VIRTUAL_WIDTH / 2, 110, VIRTUAL_WIDTH / 2, 'center')
+    -- selected option
+    if player1.isAI then
+        -- draw a rectangle around 'computer'
+        love.graphics.rectangle('line', 82, 105, 50, 18)
+    else
+        -- draw a rectangle around 'human'
+        love.graphics.rectangle('line', 82, 85, 50, 18)
+    end
+    if player2.isAI then
+        -- draw a rectangle around 'computer'
+        love.graphics.rectangle('line', VIRTUAL_WIDTH / 2 + 82, 105, 50, 18)
+    else
+        -- draw a rectangle around 'human'
+        love.graphics.rectangle('line', VIRTUAL_WIDTH / 2 + 82, 85, 50, 18)
+    end
+end
+
 --[[
     Renders the current FPS.
 ]]
@@ -366,4 +455,56 @@ function displayFPS()
     love.graphics.setFont(smallFont)
     love.graphics.setColor(0, 1, 0, 1)
     love.graphics.print('FPS: ' .. tostring(love.timer.getFPS()), 10, 10)
+end
+
+-- enable AI to play with any paddles that have been delegated to 'computer'
+-- random range is calculated only once per turn by setting Paddle.isEngaged
+
+function controlledByAI(player)
+    if player == 1 then
+        -- set awareness range
+        if not player1.isEngaged then
+            player1.awarenessRange = math.random( VIRTUAL_WIDTH * 0.25, VIRTUAL_WIDTH * 0.75 )
+        end
+
+        -- control paddle once it's aware of the ball
+        if ball.x + ball.width < player1.awarenessRange and ball.dx < 0 then
+            -- prevent awareness from being calculated every frame
+            player1.isEngaged = true
+
+            if ball.y > player1.y + player1.height then
+                player1.dy = PADDLE_SPEED
+            elseif ball.y < player1.y then
+                player1.dy = -PADDLE_SPEED
+            else
+                player1.dy = 0
+            end
+        else
+            -- calculate a new range if player is not engaged
+            player1.isEngaged = false
+        end
+    end
+    if player == 2 then
+        if not player2.isEngaged then
+            --set  awareness range
+            player2.awarenessRange = math.random( VIRTUAL_WIDTH * 0.25, VIRTUAL_WIDTH * 0.75 )
+        end
+
+        -- control paddle once it's aware of the ball
+        if ball.x > player2.awarenessRange and ball.dx > 0 then
+            -- prevent awareness from being calculated every frame
+            player2.isEngaged = true
+
+            if ball.y > player2.y + player2.height then
+                player2.dy = PADDLE_SPEED
+            elseif ball.y < player2.y then
+                player2.dy = -PADDLE_SPEED
+            else
+                player2.dy = 0
+            end
+        else
+            -- calculate a new range if player is not engaged
+            player2.isEngaged = false
+        end
+    end
 end
