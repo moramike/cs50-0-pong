@@ -182,7 +182,7 @@ function love.update(dt)
         if ball:collides(player1) then
             ball.dx = -ball.dx * 1.03
             ball.x = player1.x + 5
-            player1.isEngaged = false
+            player1.isAware = false
 
             -- keep velocity going in the same direction, but randomize it
             if ball.dy < 0 then
@@ -196,7 +196,7 @@ function love.update(dt)
         if ball:collides(player2) then
             ball.dx = -ball.dx * 1.03
             ball.x = player2.x - 4
-            player2.isEngaged = false
+            player2.isAware = false
 
             -- keep velocity going in the same direction, but randomize it
             if ball.dy < 0 then
@@ -458,19 +458,19 @@ function displayFPS()
 end
 
 -- enable AI to play with any paddles that have been delegated to 'computer'
--- random range is calculated only once per turn by setting Paddle.isEngaged
+-- random range is calculated only once per turn by setting Paddle.isAware
 
 function controlledByAI(player)
     if player == 1 then
         -- set awareness range
-        if not player1.isEngaged then
+        if not player1.isAware then
             player1.awarenessRange = math.random( VIRTUAL_WIDTH * 0.25, VIRTUAL_WIDTH * 0.75 )
         end
 
         -- control paddle once it's aware of the ball
         if ball.x + ball.width < player1.awarenessRange and ball.dx < 0 then
             -- prevent awareness from being calculated every frame
-            player1.isEngaged = true
+            player1.isAware = true
 
             if ball.y > player1.y + player1.height then
                 player1.dy = PADDLE_SPEED
@@ -481,11 +481,12 @@ function controlledByAI(player)
             end
         else
             -- calculate a new range if player is not engaged
-            player1.isEngaged = false
+            player1.isAware = false
+            player1.dy = 0
         end
     end
     if player == 2 then
-        if not player2.isEngaged then
+        if not player2.isAware then
             --set  awareness range
             player2.awarenessRange = math.random( VIRTUAL_WIDTH * 0.25, VIRTUAL_WIDTH * 0.75 )
         end
@@ -493,7 +494,7 @@ function controlledByAI(player)
         -- control paddle once it's aware of the ball
         if ball.x > player2.awarenessRange and ball.dx > 0 then
             -- prevent awareness from being calculated every frame
-            player2.isEngaged = true
+            player2.isAware = true
 
             if ball.y > player2.y + player2.height then
                 player2.dy = PADDLE_SPEED
@@ -504,7 +505,8 @@ function controlledByAI(player)
             end
         else
             -- calculate a new range if player is not engaged
-            player2.isEngaged = false
+            player2.isAware = false
+            player2.dy = 0
         end
     end
 end

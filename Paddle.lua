@@ -33,7 +33,7 @@ function Paddle:init(x, y, width, height)
     self.height = height
     self.dy = 0
     self.isAI = false
-    self.isEngaged = false
+    self.isAware = false
     self.awarenessRange = VIRTUAL_WIDTH / 2
 end
 
